@@ -146,7 +146,7 @@ AutoPulse-Q/
 │
 └── examples/
     └── run_autonomous_calibration.py
-
+```
 # Module Breakdown
 
 ## `simulator.py`
@@ -189,3 +189,17 @@ Mimics the logic of a laboratory calibration script. It autonomously decides whe
 The analytics engine.
 
 Generates publication-ready visualizations comparing the uncalibrated trajectory to the final optimized state, providing immediate physical context to the numerical results.
+
+---
+
+
+# Installation
+
+## Clone Repository
+
+```bash
+git clone [https://github.com/SoumyajitPal-2210/AutoPulse-Q.git](https://github.com/SoumyajitPal-2210/AutoPulse-Q.git)
+cd AutoPulse-Q
+
+python -m venv venv
+source venv/bin/activate
