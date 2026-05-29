@@ -146,3 +146,46 @@ AutoPulse-Q/
 │
 └── examples/
     └── run_autonomous_calibration.py
+
+# Module Breakdown
+
+## `simulator.py`
+
+The core physics engine.
+
+Responsible for:
+- constructing the Lindbladian collapse operators,
+- managing the time-dependent Hamiltonian,
+- and tracking Pauli expectation values via `qutip.mesolve`.
+
+---
+
+## `pulses.py`
+
+Defines the microwave envelopes.
+
+Generates smooth Gaussian controls to suppress high-frequency spectral leakage during the calibration sequence.
+
+---
+
+## `routines.py`
+
+The mathematical optimization layer.
+
+Uses SciPy's Nelder-Mead algorithm to treat the simulator as an experimental black box, mapping "measured" expectation values to corrected physical parameters.
+
+---
+
+## `agent.py`
+
+The orchestration state machine.
+
+Mimics the logic of a laboratory calibration script. It autonomously decides when to run a Rabi sequence versus a Ramsey sequence, updating its internal assumptions about the hardware after each step.
+
+---
+
+## `dashboard.py`
+
+The analytics engine.
+
+Generates publication-ready visualizations comparing the uncalibrated trajectory to the final optimized state, providing immediate physical context to the numerical results.
