@@ -560,15 +560,9 @@ This form captures the essential control physics of resonant and off-resonant qu
 
 Real qubits interact with an environment. That means the dynamics are not purely unitary and must include relaxation and dephasing. AutoPulse-Q models this with a Lindblad master equation:
 
-$$
-\frac{d\rho}{dt}
-=
--i[H(t), \rho]
-+
-\frac{1}{T_1}\mathcal{D}[\sigma_-]\rho
-+
-\frac{1}{2T_\phi}\mathcal{D}[\sigma_z]\rho
-$$
+```math
+\frac{d\rho}{dt} = -i[H(t), \rho] + \frac{1}{T_1}\mathcal{D}[\sigma_-]\rho + \frac{1}{2T_\phi}\mathcal{D}[\sigma_z]\rho
+```
 
 where:
 
