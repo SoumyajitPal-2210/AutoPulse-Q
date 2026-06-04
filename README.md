@@ -1,157 +1,119 @@
 # AutoPulse-Q
 
-## Autonomous Noise-Aware Pulse Calibration Framework for Superconducting Qubits
+> **Autonomous Noise-Aware Pulse Calibration Framework for Superconducting Qubits**
 
-AutoPulse-Q is a modular simulation and orchestration framework for modeling, executing, and autonomously calibrating microwave-driven qubit dynamics under decoherence.
-
-The project is built around a realistic hardware-control workflow:
-
-1. Define the noisy qubit environment
-2. Initialize with uncalibrated drifting hardware parameters
-3. Deploy an autonomous software agent
-4. Execute simulated Rabi and Ramsey calibration experiments
-5. Iteratively optimize pulse amplitude and detuning
-6. Visualize calibration convergence and state trajectories
-
-The codebase is intentionally modular, mirroring modern closed-loop quantum control architectures:
-
-- Open-system Hamiltonian modeling
-- Derivative-free numerical optimization
-- Autonomous state-machine orchestration
-- Physically grounded calibration primitives
+AutoPulse-Q is a modular, physics-informed Python framework for simulating, executing, and autonomously calibrating microwave-driven superconducting qubit dynamics under realistic decoherence conditions. It replicates the closed-loop calibration workflows found in real quantum hardware labs — starting from a severely miscalibrated, noisy qubit and autonomously recovering high-fidelity gate control through iterative Rabi and Ramsey experiments.
 
 ---
 
-# Project Motivation
+## Table of Contents
 
-Real superconducting quantum processors do not operate on static idealized parameters. They suffer from continuous hardware drift.
-
-Specifically:
-
-- Transition frequencies fluctuate
-- Control electronics degrade
-- Microwave pulses lose gate fidelity over time
-
-This creates a major engineering bottleneck:
-
-- Calibration must be repeated continuously
-- Manual tuning becomes impossible at scale
-- Control pulses must adapt against the current noise floor
-
-This project simulates that autonomous calibration loop computationally.
-
-> Start with a severely miscalibrated noisy qubit. Deploy an autonomous software agent to iteratively run simulated experiments, measure outcomes, and correct physical control parameters until high-fidelity operation is restored.
-
-# Physics Background
-
-## Driven Qubit Dynamics with Drift
-
-A driven two-level system evolves according to the time-dependent Schrödinger equation. In the rotating frame of the microwave drive, the Hamiltonian is:
-
-```math
-H(t) = \frac{\Delta}{2}\sigma_z + \frac{\Omega(t)}{2}\sigma_x
-```
-
-Where:
-
-- `Δ = ωq − ωd` is the frequency detuning
-- `σx, σz` are Pauli operators
-- `Ω(t)` is the microwave pulse envelope
-
-Unlike idealized simulations, this project initializes with:
-
-```math
-\Delta \neq 0
-```
-
-This introduces an intentional unknown reference-frame error that the calibration agent must autonomously discover and correct.
+- [Motivation](#motivation)
+- [Physics Background](#physics-background)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Module Breakdown](#module-breakdown)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Example Output](#example-output)
+- [Results & Physical Analysis](#results--physical-analysis)
+- [Calibration Workflow](#calibration-workflow)
+- [Limitations & Future Work](#limitations--future-work)
+- [Software Stack](#software-stack)
+- [Requirements](#requirements)
+- [Scientific Concepts Demonstrated](#scientific-concepts-demonstrated)
+- [Author](#author)
 
 ---
 
-## Open Quantum Systems
+## Motivation
 
-Real qubits interact with their environment, leading to irreversible information loss.
+Superconducting qubits are not static, ideal objects. In any real quantum processor, control parameters drift continuously due to:
 
-The project models these effects using the Lindblad master equation:
+- Fluctuating qubit transition frequencies driven by substrate noise and two-level system fluctuators
+- Microwave electronics degradation and cable attenuation drift
+- Environmental electromagnetic noise coupling into the control lines
 
-```math
-\frac{d\rho}{dt} = -i[H(t), \rho] + \frac{1}{T_1}\mathcal{D}[\sigma_-]\rho + \frac{1}{2T_\phi}\mathcal{D}[\sigma_z]\rho
-```
+This creates a persistent engineering bottleneck: gate fidelity degrades silently between calibration runs, and at the scale of a many-qubit device, manual recalibration becomes entirely infeasible.
 
-Where:
-
-- `ρ` is the density matrix
-- `𝒟[L]ρ` is the Lindblad dissipator
-
-This formalism captures:
-
-- `T1` relaxation (energy decay)
-- `Tφ` pure dephasing
-- Decoherence-induced damping of coherent control
+AutoPulse-Q models this problem computationally. It initializes a qubit with severely miscalibrated control parameters and deploys an autonomous software agent that iteratively runs simulated characterization experiments, infers correction parameters from the measured response, and converges the system back to high-fidelity operation — without any human intervention in the loop. The design mirrors the software architecture used in production quantum control stacks at hardware labs.
 
 ---
 
-## Calibration Primitives
+## Physics Background
 
-The autonomous agent relies on two standard calibration experiments.
+### Driven Qubit Dynamics in the Rotating Frame
 
-### 1. Rabi Calibration
+A superconducting qubit driven by a microwave field is treated as an effective two-level system. In the rotating frame of the drive, the time-dependent Hamiltonian is:
 
-Sweeps the drive amplitude to observe coherent population transfer between `|0⟩` and `|1⟩`.
+$$H(t) = \frac{\Delta}{2}\sigma_z + \frac{\Omega(t)}{2}\sigma_x$$
 
-The optimizer minimizes:
+| Symbol | Meaning |
+|--------|---------|
+| `Δ = ωq − ωd` | Frequency detuning between qubit transition and drive |
+| `Ω(t)` | Time-dependent microwave pulse envelope |
+| `σx, σz` | Pauli operators acting on the qubit |
 
-```math
-\langle \sigma_z \rangle
-```
+The project intentionally initializes with `Δ ≠ 0`, introducing an unknown reference-frame error that the calibration agent must autonomously discover and correct. When `Δ = 0` the drive is resonant and ideal Rabi oscillations occur; when `Δ ≠ 0` both the oscillation frequency and the maximum reachable transfer probability are degraded.
 
-to identify the correct π-pulse amplitude.
+### Open Quantum System Dynamics
+
+Real qubits irreversibly exchange energy and phase coherence with their environment. AutoPulse-Q models this using the **Lindblad master equation**:
+
+$$\frac{d\rho}{dt} = -i[H(t), \rho] + \frac{1}{T_1}\mathcal{D}[\sigma_-]\rho + \frac{1}{2T_\phi}\mathcal{D}[\sigma_z]\rho$$
+
+| Symbol | Meaning |
+|--------|---------|
+| `ρ` | Qubit density matrix |
+| `T₁` | Energy relaxation time (amplitude damping) |
+| `Tφ` | Pure dephasing time |
+| `σ₋` | Lowering operator (`\|0⟩⟨1\|`) |
+| `𝒟[L]ρ` | Lindblad dissipator: `LρL† − ½{L†L, ρ}` |
+
+This formalism captures T₁ energy decay from `|1⟩` to `|0⟩`, phase randomisation due to environmental fluctuations, and the resulting damping of coherent oscillation visibility — all of which directly limit calibration accuracy.
+
+### Rabi Calibration
+
+Rabi calibration corrects pulse-amplitude error. In the ideal resonant case, excited-state population oscillates sinusoidally:
+
+$$P(|1\rangle)(t) = \sin^2\!\left(\frac{\Omega t}{2}\right)$$
+
+Under detuning, the oscillation frequency shifts and the maximum reachable visibility is constrained:
+
+$$P(|1\rangle)_{\max} = \frac{\Omega^2}{\Omega^2 + \Delta^2}$$
+
+The calibration routine sweeps drive amplitude and uses derivative-free optimisation to identify the correct π-pulse amplitude — the amplitude at which the qubit is fully inverted from `|0⟩` to `|1⟩`.
+
+### Ramsey Calibration
+
+Ramsey calibration corrects frequency detuning with higher precision than Rabi alone. A Ramsey sequence applies a π/2 pulse, allows free precession for time `τ`, then applies a second π/2 pulse. The resulting signal oscillates as:
+
+$$P(|1\rangle)(\tau) \propto 1 + \cos(\Delta\tau + \phi)$$
+
+The oscillation frequency directly encodes the residual detuning `Δ`, which the optimiser corrects by updating the drive frequency. This two-stage Rabi-then-Ramsey approach is the standard protocol used in real superconducting qubit labs.
+
+### Gaussian Pulse Shaping
+
+Control pulses are implemented as truncated Gaussian envelopes. Sharp-edged (square) pulses have broad frequency spectra that can parasitically drive transitions to higher transmon levels outside the computational subspace. Gaussian shaping confines the drive spectrum and suppresses this leakage, improving calibration stability and gate fidelity.
 
 ---
 
-### 2. Ramsey Calibration
+## Features
 
-Simulates a π/2 pulse under detuning error.
-
-The optimizer minimizes:
-
-```math
-\langle \sigma_y \rangle^2
-```
-
-to estimate the inverse frequency shift required to realign:
-
-```math
-\omega_d \rightarrow \omega_q
-```
-
-# Features
-
-- Autonomous closed-loop calibration orchestration
-- Time-dependent Lindblad master equation simulation
-- Gaussian and square pulse engineering
-- T1 relaxation and T2* dephasing modeling
-- Coarse Rabi amplitude optimization
-- Ramsey frequency detuning correction
-- High-fidelity visualization dashboards
-- Modular scientific software architecture
+- **Autonomous closed-loop calibration** — full agent-driven loop with no human intervention
+- **Lindblad master equation simulation** via QuTiP's `mesolve`
+- **Gaussian pulse engineering** with suppressed spectral leakage
+- **T₁ relaxation and T₂\* dephasing** modeled via Lindblad collapse operators
+- **Rabi amplitude calibration** using derivative-free Nelder-Mead optimisation
+- **Ramsey detuning correction** via phase accumulation estimation
+- **Publication-quality visualisation** of pulse envelopes, Rabi landscapes, and state trajectories
+- **Modular, layered architecture** with clean separation of physics, control, calibration, orchestration, and visualisation concerns
 
 ---
 
-# Software Stack
+## Project Structure
 
-| Library | Purpose |
-|---|---|
-| QuTiP | Open quantum system simulation |
-| SciPy | Derivative-free optimization |
-| NumPy | Numerical computation |
-| Matplotlib | Visualization and analytics |
-
----
-
-# Project Structure
-
-```text
+```
 AutoPulse-Q/
 │
 ├── README.md
@@ -160,126 +122,124 @@ AutoPulse-Q/
 ├── src/autoqcal/
 │   ├── __init__.py
 │   ├── physics/
-│   │   └── simulator.py
+│   │   └── simulator.py          # Lindblad master equation engine
 │   ├── control/
-│   │   └── pulses.py
+│   │   └── pulses.py             # Microwave pulse envelope generation
 │   ├── calibration/
-│   │   └── routines.py
+│   │   └── routines.py           # Rabi & Ramsey optimisation routines
 │   ├── orchestration/
-│   │   └── agent.py
+│   │   └── agent.py              # Autonomous calibration state machine
 │   └── visualization/
-│       └── dashboard.py
+│       └── dashboard.py          # Analytics and plotting engine
 │
 ├── tests/
-│   └── test_simulator.py
+│   └── test_simulator.py         # Unit tests for the physics engine
 │
 └── examples/
-    └── run_autonomous_calibration.py
+    └── run_autonomous_calibration.py   # End-to-end calibration demo
 ```
 
 ---
 
-# Module Breakdown
+## Module Breakdown
 
-## `simulator.py`
+### `physics/simulator.py` — Core Physics Engine
 
-Core physics engine responsible for:
+The lowest layer of the stack. Responsible for:
+- Constructing Lindbladian collapse operators from T₁ and Tφ parameters
+- Assembling the time-dependent rotating-frame Hamiltonian `H(t)`
+- Evolving the density matrix forward in time via `qutip.mesolve`
+- Returning Pauli expectation values (`⟨σx⟩`, `⟨σy⟩`, `⟨σz⟩`) as the observables used by the calibration layer
 
-- Constructing Lindbladian collapse operators
-- Managing the time-dependent Hamiltonian
-- Tracking Pauli expectation values using `qutip.mesolve`
+The simulator is intentionally treated as a black box by the layers above it, mirroring how real quantum hardware control software interacts with a device through measurement outcomes alone.
 
----
+### `control/pulses.py` — Pulse Engineering
 
-## `pulses.py`
+Defines the microwave drive envelopes used to control the qubit. Implements smooth Gaussian pulse shapes that confine the drive's frequency spectrum, reducing leakage into non-computational transmon levels during calibration sequences.
 
-Defines microwave pulse envelopes.
+### `calibration/routines.py` — Optimisation Layer
 
-Implements smooth Gaussian controls to suppress high-frequency spectral leakage during calibration.
+Contains the Rabi and Ramsey calibration routines. Uses SciPy's **Nelder-Mead** derivative-free simplex optimiser to treat the simulator as a hardware black box — mapping measured expectation values back to corrected control parameters without requiring any gradient information. This choice is physically motivated: real hardware experiments are noisy and non-differentiable.
 
----
+### `orchestration/agent.py` — Autonomous State Machine
 
-## `routines.py`
+The central orchestration component. Implements the calibration agent logic by:
+- Deciding the sequence of experiments to run (Rabi → Ramsey → Rabi → ...)
+- Tracking and updating internal estimates of hardware parameters after each iteration
+- Enforcing convergence checks and halting criteria
+- Logging iteration-by-iteration parameter evolution
 
-Optimization layer.
+### `visualization/dashboard.py` — Analytics Engine
 
-Uses SciPy's Nelder-Mead algorithm to treat the simulator as a hardware black box, mapping measured expectation values to corrected control parameters.
-
----
-
-## `agent.py`
-
-Autonomous orchestration state machine.
-
-Mimics laboratory calibration logic by deciding when to execute Rabi versus Ramsey sequences and updating internal hardware estimates after each iteration.
+Generates the diagnostic plots: pulse envelope comparison, Rabi calibration landscape scan, and before-vs-after state trajectory plots. Outputs correspond directly to the figures shown in the Results section.
 
 ---
 
-## `dashboard.py`
+## Installation
 
-Analytics and visualization engine.
-
-Generates publication-style visualizations comparing uncalibrated trajectories against optimized coherent evolution.
-
----
-
-# Installation
-
-## Clone Repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/SoumyajitPal-2210/AutoPulse-Q.git
 cd AutoPulse-Q
 ```
 
----
+### 2. Create a Virtual Environment
 
-## Create Virtual Environment
-
-### Linux / macOS
-
+**Linux / macOS:**
 ```bash
 python -m venv venv
 source venv/bin/activate
 ```
 
-### Windows (PowerShell)
-
+**Windows (PowerShell):**
 ```powershell
 python -m venv venv
 venv\Scripts\activate
 ```
 
----
-
-## Install Dependencies
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
+> **Note:** QuTiP depends on Cython and a C compiler. On Linux this is typically available out of the box. On Windows, installing via conda is recommended if pip fails:
+> ```bash
+> conda install -c conda-forge qutip
+> ```
+
 ---
 
-# Running the Project
+## Usage
 
-## Linux / macOS
+### Run the Full Autonomous Calibration Demo
 
+**Linux / macOS:**
 ```bash
 export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
 python examples/run_autonomous_calibration.py
 ```
 
----
-
-## Windows (PowerShell)
-
+**Windows (PowerShell):**
 ```powershell
 $env:PYTHONPATH="src"
 python examples\run_autonomous_calibration.py
 ```
-# Example Runtime Output
 
-```text
+### Run Tests
+
+```bash
+pytest tests/ -v
+```
+
+---
+
+## Example Output
+
+Running the demo prints the agent's internal state at each calibration iteration and the final converged hardware configuration:
+
+```
 ==================================================
  AutoPulse-Q: Autonomous Qubit Calibration Framework
 ==================================================
@@ -309,163 +269,138 @@ INFO: Calibration Converged Successfully.
 ==================================================
 ```
 
----
-
-# Results and Physical Analysis
-
-The autonomous calibration framework rehabilitates a severely miscalibrated qubit environment through iterative closed-loop optimization.
+The agent begins with a π-pulse amplitude 12× too small (`0.1 GHz`) and a detuning of `1.2 GHz`, and converges to the physically correct operating point within three iterations.
 
 ---
 
-## 1. Microwave Pulse Envelopes
+## Results & Physical Analysis
 
-The control field is modeled as a truncated Gaussian microwave drive envelope:
+![Autonomous Pulse Calibration Results](Graphical_Analysis.png)
 
-```math
-\Omega(t)
+The figure above summarises the three key diagnostic outputs produced by `dashboard.py` after a complete calibration run. Each panel captures a distinct aspect of what the autonomous agent corrects.
+
+---
+
+### Panel 1 — Microwave Pulse Envelopes (top left)
+
+This panel compares the initial and final microwave drive envelopes `Ω(t)` over the 20 ns gate window.
+
+**Initial pulse (red dashed):** The uncalibrated drive amplitude is `A = 0.1 GHz`. The integrated pulse area — which determines the rotation angle on the Bloch sphere — is far below the π-pulse threshold. Physically, this means the drive is too weak to invert the qubit state; it produces only a negligible rotation even under perfectly resonant conditions.
+
+**Final pulse (teal solid):** After Rabi calibration, the optimiser converges to `A ≈ 1.21 GHz`. The Gaussian envelope peaks symmetrically at `t = 10 ns` (mid-pulse) and tapers smoothly to zero at both temporal edges. This smooth shaping is deliberate: it minimises the drive's high-frequency spectral content, reducing the probability of exciting parasitic transitions to higher transmon levels outside the computational subspace. The area under the calibrated Gaussian envelope corresponds to a π rotation — the qubit is fully inverted from `|0⟩` to `|1⟩` at the end of the pulse under resonant conditions.
+
+---
+
+### Panel 2 — Rabi Calibration Landscape (top right)
+
+This panel shows the excited-state population `P(|1⟩)` measured at the end of a fixed-duration pulse as the drive amplitude is swept from 0 to 2.5 GHz.
+
+The landscape is **nonlinear and non-monotonic** — a direct consequence of the strong initial detuning (`Δ = 1.2 GHz`). Under large detuning, the effective Rabi frequency in the qubit's rotating frame is `Ω_eff = √(Ω² + Δ²)`, which shifts the condition for population inversion away from the expected resonant value. The oscillatory structure across the landscape arises from multi-cycle Rabi flopping: at higher amplitudes the qubit completes more than one full Rabi cycle within the fixed gate duration, causing the final-state probability to oscillate back and forth between 0 and its detuning-limited maximum.
+
+The **dashed vertical teal line** marks the optimal amplitude at `1.21 GHz` — the point at which the Nelder-Mead optimiser found the highest achievable `P(|1⟩)` given the residual detuning at this calibration stage. Notably, this maximum is substantially below 1.0. This is physically expected: with `Δ ≠ 0`, the maximum transfer probability is `Ω²/(Ω² + Δ²) < 1`. Full inversion is only recovered once the subsequent Ramsey stage also corrects the frequency offset.
+
+---
+
+### Panel 3 — Qubit State Evolution During Pulse (bottom)
+
+This panel compares the time-resolved excited-state population `P(|1⟩)(t) = (1 − ⟨σz(t)⟩) / 2` across the two control scenarios.
+
+**Uncalibrated trajectory (red dashed):** The qubit remains essentially frozen near the ground state `|0⟩` throughout the entire pulse. The weak drive amplitude combined with the large frequency detuning produces almost no coherent rotation, and the qubit never accumulates meaningful excited-state population. This represents the hardware failure mode the calibration agent is designed to detect and correct.
+
+**Calibrated trajectory (teal solid):** After the autonomous Rabi-Ramsey correction loop, coherent Rabi oscillations are fully restored. The qubit population rises and falls in smooth sinusoidal cycles. Two physically realistic effects limit the peak population below the ideal value of 1.0:
+
+1. **Residual detuning:** A finite number of calibration iterations leaves a small uncorrected frequency offset, preventing perfect inversion.
+2. **Open-system dissipation:** T₁ relaxation and T₂\* dephasing via the Lindblad collapse operators continuously damp the coherent oscillation amplitude throughout the evolution. This is visible as the progressive decrease in successive oscillation peaks over the 20 ns window, consistent with realistic decoherence timescales for superconducting transmon qubits.
+
+The contrast between the two trajectories directly quantifies the calibration agent's effectiveness: starting from a state of near-total control failure, the autonomous loop recovers coherent qubit control in three iterations — without any prior knowledge of the correct hardware parameters.
+
+---
+
+### Summary of Calibration Corrections
+
+| Parameter | Initial (Miscalibrated) | Final (Calibrated) | Physical Effect |
+|-----------|------------------------|--------------------|-----------------|
+| `pi_amp` | `0.1 GHz` | `1.21 GHz` | Drive now induces a full π rotation on the Bloch sphere |
+| `detuning` | `1.2 GHz` | `~0.61 GHz` | Drive frequency realigned toward qubit resonance |
+| Gate fidelity | Near zero | Restored (decoherence-limited) | Coherent oscillations re-emerge |
+
+---
+
+## Calibration Workflow
+
+```
+┌──────────────────────────────────┐
+│        Noisy Qubit Model         │
+│   pi_amp = 0.1, detuning = 1.2  │
+└────────────────┬─────────────────┘
+                 │
+                 ▼
+┌──────────────────────────────────┐
+│        Rabi Experiment           │
+│  Sweep amplitude, measure P(|1>) │
+│  Nelder-Mead optimisation        │
+└────────────────┬─────────────────┘
+                 │
+                 ▼
+┌──────────────────────────────────┐
+│   Update: pi_amp → ~1.21 GHz    │
+└────────────────┬─────────────────┘
+                 │
+                 ▼
+┌──────────────────────────────────┐
+│        Ramsey Experiment         │
+│  π/2 → free precession → π/2    │
+│  Estimate detuning from fringes  │
+└────────────────┬─────────────────┘
+                 │
+                 ▼
+┌──────────────────────────────────┐
+│   Update: detuning → ~0.61 GHz  │
+└────────────────┬─────────────────┘
+                 │
+                 ▼  (repeat until convergence)
+┌──────────────────────────────────┐
+│       Recalibrated Qubit         │
+│  (decoherence-limited fidelity)  │
+└──────────────────────────────────┘
 ```
 
-### Initial Uncalibrated Pulse
+---
 
-- Initialized with an arbitrary amplitude:
-  
-```math
-A = 0.1 \text{ GHz}
+## Limitations & Future Work
+
+### Current Limitations
+
+- **Ideal measurement assumed:** No readout noise, measurement-induced backaction, or dispersive resonator coupling is modelled. Real readout fidelity is limited by photon shot noise and qubit-resonator dispersive interaction.
+- **No `1/f` drift:** Qubit parameters are static between calibration iterations. Real devices exhibit continuous stochastic frequency drift that would require adaptive or online calibration strategies.
+- **Single-qubit scope:** No two-qubit gates, cross-resonance drives, or ZZ coupling between neighbouring qubits.
+- **No DRAG correction:** Higher transmon levels are not explicitly modelled; leakage is only suppressed implicitly through Gaussian pulse shaping.
+
+### Planned Extensions
+
+- GPU-accelerated density matrix evolution via NVIDIA `cuQuantum`
+- Reinforcement-learning calibration agent to replace Nelder-Mead (policy-gradient or model-based RL)
+- DRAG pulse engineering for explicit leakage suppression to higher transmon levels
+- Dispersive readout resonator simulation with finite signal-to-noise ratio
+- Multi-qubit calibration orchestration with simultaneous cross-talk correction
+
+---
+
+## Software Stack
+
+| Library | Version | Role |
+|---------|---------|------|
+| **QuTiP** | ≥ 4.7.0 | Open quantum system simulation (`mesolve`, density matrices, collapse operators) |
+| **SciPy** | ≥ 1.10.0 | Derivative-free Nelder-Mead optimisation |
+| **NumPy** | ≥ 1.24.0 | Numerical array computation |
+| **Matplotlib** | ≥ 3.7.0 | Calibration dashboards and trajectory visualisation |
+| **pytest** | ≥ 7.0.0 | Unit testing of the physics engine |
+
+---
+
+## Requirements
+
 ```
-
-- The integrated pulse area is insufficient to induce meaningful state transfer.
-
-### Final Calibrated Pulse
-
-The optimizer converges to:
-
-```math
-A \approx 1.21 \text{ GHz}
-```
-
-corresponding to the correct π-pulse area within a fixed:
-
-```math
-\tau = 20 \text{ ns}
-```
-
-window.
-
-Gaussian pulse shaping suppresses high-frequency spectral leakage and reduces coupling to higher transmon states.
-
----
-
-## 2. Rabi Calibration Landscape
-
-The calibration landscape tracks excited-state population:
-
-```math
-P(|1\rangle)
-```
-
-as a function of pulse amplitude.
-
-Under strong detuning, the maximum reachable visibility becomes constrained:
-
-```math
-P(|1\rangle)_{\max}
-=
-\frac{\Omega^2}{\Omega^2 + \Delta^2}
-```
-
-The optimizer explores this non-linear landscape using derivative-free Nelder-Mead search.
-
----
-
-## 3. Dynamic State Evolution
-
-Excited-state population evolves according to:
-
-```math
-P(|1\rangle)_t
-=
-\frac{1 - \langle \sigma_z(t) \rangle}{2}
-```
-
-### Uncalibrated Evolution
-
-- Weak drive amplitude
-- Large detuning drift
-- State remains trapped near `|0⟩`
-
-### Calibrated Evolution
-
-After autonomous Rabi-Ramsey correction:
-
-- Coherent oscillations re-emerge
-- Population transfer becomes controllable
-- Target state preparation is restored
-
-Open-system dissipation introduces realistic damping through:
-
-- `T1` relaxation
-- `T2*` dephasing
-
----
-
-## Primary Insight
-
-A single optimization parameter cannot compensate for hardware drift in isolation.
-
-The autonomous multi-stage calibration loop succeeds because it jointly:
-
-1. Maps the Rabi power landscape
-2. Estimates frame detuning via Ramsey phase accumulation
-3. Iteratively updates physical control parameters
-
----
-
-# Critical Assessment
-
-## What the project demonstrates well
-
-- Closed-loop automation matching real calibration workflows
-- Derivative-free optimization of noisy quantum channels
-- Strong separation between orchestration and physics layers
-
----
-
-## Current Limitations
-
-- Assumes ideal projective measurement
-- No stochastic `1/f` drift modeling
-- Single-qubit only
-- No cross-talk or `ZZ` coupling effects
-
----
-
-# Scientific Concepts Demonstrated
-
-This project demonstrates:
-
-- Autonomous quantum hardware calibration
-- Open quantum systems and Lindblad dynamics
-- Rabi and Ramsey experimental protocols
-- Numerical black-box optimization
-- Microwave pulse engineering
-
----
-
-# Future Extensions
-
-Potential upgrades include:
-
-- Replacing `qutip.mesolve` with NVIDIA `cuQuantum`
-- Reinforcement-learning-based calibration agents
-- DRAG pulse engineering for leakage suppression
-- Readout resonator simulation
-- Multi-qubit calibration orchestration
-
----
-
-# Requirements
-
-```text
 numpy>=1.24.0
 scipy>=1.10.0
 qutip>=4.7.0
@@ -473,252 +408,28 @@ matplotlib>=3.7.0
 pytest>=7.0.0
 ```
 
----
-
-# Author
-
-## Soumyajit Pal
-
-Project Focus:
-
-- Pulse-level quantum control
-- Open quantum systems
-- Noisy quantum dynamics
-- Scientific quantum software
-- Autonomous calibration orchestration
-
-
-# AutoPulse-Q
-
-## Autonomous Noise-Aware Pulse Calibration Framework for Superconducting Qubits
-
-AutoPulse-Q is a Python-based simulation and orchestration framework for modeling, executing, and autonomously calibrating microwave-driven superconducting qubit dynamics under decoherence, detuning, and pulse miscalibration.
-
-The project implements closed-loop calibration workflows based on standard qubit characterization experiments, especially Rabi and Ramsey sequences, to estimate and correct pulse-amplitude and frequency-detuning errors. The framework is intentionally modular and physics-informed, making it useful for studying calibration primitives, drift-aware quantum control, and software-defined quantum hardware workflows.
+Python 3.8 or higher is required.
 
 ---
 
-## Why This Project Matters
+## Scientific Concepts Demonstrated
 
-Superconducting qubits are not static ideal objects. In practice, their control parameters drift over time because of fluctuations in device frequency, microwave control imperfections, and environmental noise.
-
-That creates a recurring calibration problem:
-
-- control pulses stop matching the device response,
-- gate fidelity degrades,
-- frequency offsets accumulate,
-- calibration must be repeated continuously.
-
-AutoPulse-Q models that problem computationally. It begins from a miscalibrated noisy qubit and uses an autonomous closed-loop workflow to recover control performance through repeated characterization and parameter correction.
-
-This makes the repository relevant to quantum-hardware workflows where calibration, parameter estimation, and software orchestration are central.
+- Autonomous quantum hardware calibration and closed-loop control
+- Open quantum systems and Lindblad master equation dynamics
+- Rabi oscillations and Ramsey interferometry as calibration primitives
+- Derivative-free black-box optimisation of noisy quantum channels
+- Microwave pulse engineering and Gaussian spectral shaping
+- Rotating-frame Hamiltonian formulation for driven two-level systems
+- Decoherence modelling: T₁ relaxation and T₂\* dephasing
 
 ---
 
-## What the Project Does
+## Author
 
-AutoPulse-Q currently implements:
+**Soumyajit Pal**
 
-- a driven single-qubit model in the rotating frame,
-- open quantum system dynamics with decoherence,
-- microwave pulse generation,
-- Rabi-based amplitude calibration,
-- Ramsey-based detuning calibration,
-- derivative-free numerical optimization,
-- autonomous orchestration of the calibration loop,
-- visualization of calibration convergence and state trajectories.
+Research interests: pulse-level quantum control, open quantum systems, noisy qubit dynamics, scientific quantum software engineering, and autonomous calibration orchestration.
 
 ---
 
-## Underlying Physics and Theory
-
-### 1. Driven Qubit Dynamics in the Rotating Frame
-
-A superconducting qubit driven by a microwave field is modeled as an effective two-level system. In the rotating frame of the drive, the Hamiltonian used in this project is
-
-$$
-H(t) = \frac{\Delta}{2}\sigma_z + \frac{\Omega(t)}{2}\sigma_x
-$$
-
-where:
-
-- `Δ = ω_q − ω_d` is the detuning between the qubit transition frequency and the drive frequency,
-- `Ω(t)` is the pulse envelope,
-- `σ_x` and `σ_z` are Pauli operators.
-
-This form captures the essential control physics of resonant and off-resonant qubit driving.
-
-#### Physical meaning
-
-- If `Δ = 0`, the drive is resonant and the qubit undergoes ideal Rabi oscillations.
-- If `Δ ≠ 0`, the drive is misaligned in frequency space, which reduces transfer efficiency and shifts the observed oscillation pattern.
-- The calibration task is therefore to infer and correct `Δ` and the effective control amplitude.
-
----
-
-### 2. Open Quantum Systems and Decoherence
-
-Real qubits interact with an environment. That means the dynamics are not purely unitary and must include relaxation and dephasing. AutoPulse-Q models this with a Lindblad master equation:
-
-```math
-\frac{d\rho}{dt} = -i[H(t), \rho] + \frac{1}{T_1}\mathcal{D}[\sigma_-]\rho + \frac{1}{2T_\phi}\mathcal{D}[\sigma_z]\rho
-```
-
-where:
-
-- `ρ` is the density matrix,
-- `T_1` is the energy-relaxation time,
-- `T_\phi` is the pure-dephasing time,
-- `σ_-` is the lowering operator,
-- `\mathcal{D}[L]\rho = L\rho L^\dagger - \frac{1}{2}\{L^\dagger L,\rho\}` is the Lindblad dissipator.
-
-This formalism captures the loss mechanisms that matter during calibration:
-
-- population decay from `|1⟩` to `|0⟩`,
-- phase randomization,
-- damping of coherent oscillations,
-- reduced visibility in experimental readout.
-
----
-
-### 3. Rabi Calibration
-
-Rabi calibration is used to estimate pulse-amplitude error.
-
-In the ideal resonant case, the excited-state population oscillates approximately as
-
-$$
-P_{|1\rangle}(t) = \sin^2\left(\frac{\Omega t}{2}\right)
-$$
-
-When detuning is present, the oscillation is modified to
-
-$$
-P_{|1\rangle}(t)
-=
-\frac{\Omega^2}{\Omega^2 + \Delta^2}
-\sin^2\left(
-\frac{1}{2}\sqrt{\Omega^2 + \Delta^2}\,t
-\right)
-$$
-
-which shows two important effects:
-
-1. the oscillation frequency changes,
-2. the maximum transfer probability is reduced when `Δ` is nonzero.
-
-#### What the calibration routine is doing
-
-The Rabi routine sweeps the drive amplitude and observes the resulting population response. From that response, the optimizer estimates the correct amplitude needed for a target rotation, typically a `π` pulse.
-
-In this project, that means the routine is used to correct the pulse amplitude until the system produces the expected state transfer.
-
----
-
-### 4. Ramsey Calibration
-
-Ramsey calibration is used to estimate frequency detuning.
-
-A Ramsey sequence typically consists of:
-
-1. a `π/2` pulse,
-2. a free-evolution interval,
-3. another `π/2` pulse.
-
-During the free-evolution window, the qubit phase accumulates at the detuning frequency. The measured signal oscillates approximately as
-
-$$
-P_{|1\rangle}(\tau) \propto 1 + \cos(\Delta \tau + \phi)
-$$
-
-where `τ` is the free-precession time and `φ` is a phase offset.
-
-#### What this means physically
-
-If the drive is off resonance, the state vector precesses in the equatorial plane of the Bloch sphere at a rate set by the detuning. The resulting Ramsey fringes reveal the frequency offset, which can then be corrected by shifting the drive frequency.
-
-In this project, the Ramsey routine is the mechanism used to detect and reduce that frequency mismatch.
-
----
-
-### 5. Closed-Loop Calibration as an Optimization Problem
-
-The calibration process is not just a single measurement. It is an iterative estimation-and-correction loop.
-
-At a high level, the workflow is:
-
-1. initialize a noisy, miscalibrated qubit,
-2. run a characterization experiment,
-3. compute an error estimate from the measured response,
-4. update the control parameters,
-5. repeat until the system is sufficiently corrected.
-
-This is a black-box optimization problem because the simulator is treated as a hardware-like system whose internal state is not directly observed, only inferred from measurement outcomes.
-
-The project uses derivative-free optimization for this purpose, which is appropriate when the objective is noisy, nonlinear, or only accessible through experiment-style evaluation.
-
----
-
-### 6. Pulse Shaping
-
-The control field is implemented through microwave pulse envelopes. Gaussian-like pulse shaping is used to keep the drive smooth and reduce high-frequency spectral leakage.
-
-That matters because sharp pulses can introduce:
-
-- unwanted spectral components,
-- leakage into non-computational states,
-- poorer calibration stability,
-- reduced experimental realism.
-
-Pulse shaping is therefore not just an implementation detail. It is part of the physics of control fidelity.
-
----
-
-## Key Features
-
-- Simulation of driven superconducting-qubit dynamics
-- Open-system evolution with decoherence
-- Drift-aware control modeling
-- Rabi calibration for amplitude correction
-- Ramsey calibration for detuning correction
-- Closed-loop calibration orchestration
-- Derivative-free parameter optimization
-- Visualization of calibration and state evolution
-- Modular scientific software architecture
-
----
-
-## Calibration Workflow
-
-```text
-┌──────────────────────┐
-│ Noisy Qubit Model    │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ Rabi Experiment      │
-│ Amplitude Estimation │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ Pulse Update         │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ Ramsey Experiment    │
-│ Detuning Estimation  │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ Frequency Update     │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ Recalibrated Qubit   │
-└──────────────────────┘
-```
+*AutoPulse-Q — computationally replicating the autonomous calibration loop that keeps real superconducting quantum processors online.*
